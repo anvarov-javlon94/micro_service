@@ -1,19 +1,17 @@
 package uz.sqb.micro_service.controller;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.gson.Gson;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
 import lombok.extern.slf4j.Slf4j;
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
+import org.springframework.context.annotation.Description;
 import org.springframework.http.ResponseEntity;
-import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
-import uz.sqb.micro_service.model.JournalDto;
-
-import javax.validation.constraints.Max;
-import java.util.List;
+import uz.sqb.micro_service.model.*;
 
 
 @RestController
@@ -26,45 +24,71 @@ public class MainController {
     RestTemplate restTemplate;
 
     private static final String BY_STATUS = "/status/{id}";
-    private static final String ALWAYS_REPORT = "/report-always/{id}/{name}/{date}/";
+    private static final String ALWAYS_REPORT = "/report-always";
     private static final String BY_DAY  = "/day/{day}";
+    private static final String BY_BUYER_ID = "/by-buyer-id/{id}";
+    private static final String UPDATE_BUYER_STATUS = "/update/{buyer_id}/{status_id}";
+
+
 
     @GetMapping(BY_STATUS)
     public ResponseEntity getJournalByStatus(@PathVariable Long id){
-        String object = restTemplate.getForObject("http://localhost:1818/main/by-status-id/" + id, String.class);
-        switch (object) {
-            case "empty":
-                return ResponseEntity.ok("List is empty");
-            case "not_found":
-                return ResponseEntity.ok("Status is not found");
-            case "error":
-                return ResponseEntity.ok("Some error");
-            default:
-                JournalDto[] array = new Gson().fromJson(object, JournalDto[].class);
-                List<JournalDto> list = List.of(array);
-                return ResponseEntity.ok(list);
-        }
+        ApiResponse response = restTemplate.getForObject("http://localhost:1818/main/report-by-status/" + id, ApiResponse.class);
+        return ResponseEntity.ok(response != null ? response.getObject() : "error");
     }
 
-    @GetMapping(ALWAYS_REPORT)
-    public void alwaysReport(@PathVariable("id") Long id,
-                                       @PathVariable("name") String name,
-                                       @PathVariable("date") String date){
-        System.out.println(id + " " + name + " " + date);
+    @PostMapping(ALWAYS_REPORT)
+    @Description("Постоянно отправлять данные о новых заказов на телеграм бот")
+    public void alwaysReport(@RequestBody ReportBuyer object){
+        Long id = object.getId();
+        String name = object.getName();
+        String date = object.getDate();
+        String phone = object.getPhone();
+        Integer count = object.getProduct_count();
+        Double price = object.getPrice();
+        System.out.println("Buyer id : " + id + " |Buyer name:  " + name + " | date of register-" + date + "| phone-" + phone + "|count-" + count + "|price-" + price);
     }
+
 
     @GetMapping(BY_DAY)
-    public ResponseEntity getJournalByDay(@PathVariable Integer day){
-            String url = "http://localhost:1818/main/report-by-date/" + day;
-            String object = restTemplate.getForObject(url, String.class);
-            if (object.equals("empty")){
-                return ResponseEntity.badRequest().body("un correct day");
-            } else {
-                JournalDto[] array = new Gson().fromJson(object, JournalDto[].class);
-                List<JournalDto> list = List.of(array);
-                return ResponseEntity.ok(list);
-            }
+    @Description("Подключние на Bektexno и получить заказы по дню добавление")
+    public ResponseEntity getJournalByDay(
+            @PathVariable Integer day){
+        ApiResponse response = restTemplate.getForObject("http://localhost:1818/main/report-by-date/" + day, ApiResponse.class);
+        return ResponseEntity.ok(response != null ? response.getObject() : "Error");
     }
 
+    @GetMapping(UPDATE_BUYER_STATUS)
+    public ResponseEntity updateStatus(
+            @PathVariable Long buyer_id,
+            @PathVariable Long status_id){
+        StatusUpdate object = new StatusUpdate(buyer_id, status_id);
+        String url = "http://localhost:1818/main/status/update";
+        ApiResponse response = restTemplate.postForObject(url, object, ApiResponse.class);
+        return ResponseEntity.ok(response != null ? response.getObject() : "Incorrect Data");
+    }
 
+    @GetMapping(BY_BUYER_ID)
+    public ResponseEntity getJournalByBuyerId(
+            @PathVariable Long id){
+        String url = "http://localhost:1818/main/by-buyer-id/?buyer_id=" + id;
+        ApiResponse response = restTemplate.getForObject(url, ApiResponse.class);
+        return ResponseEntity.ok(response != null ? response.getObject() : "Empty Response");
+    }
+
+    @GetMapping("/test/")
+    public void getProduct() throws JSONException {
+        String string = restTemplate.getForObject("http://localhost:1818/main/test/", String.class);
+        JSONArray jsonArr = new JSONArray(string);
+        for (int i = 0; i < jsonArr.length(); i++)
+        {
+            JSONObject jsonObj = jsonArr.getJSONObject(i);
+            Product product = new Product();
+            product.setPrice(jsonObj.getDouble("price"));
+            product.setId(jsonObj.getLong("id"));
+            product.setShort_name(jsonObj.getString("short_name"));
+            System.out.println(product);
+            System.out.println(" ");
+        }
+    }
 }
