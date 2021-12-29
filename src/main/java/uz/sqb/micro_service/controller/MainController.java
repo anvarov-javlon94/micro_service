@@ -1,5 +1,8 @@
 package uz.sqb.micro_service.controller;
 
+import com.fasterxml.jackson.core.JsonParser;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.gson.Gson;
 import lombok.AccessLevel;
 import lombok.RequiredArgsConstructor;
 import lombok.experimental.FieldDefaults;
@@ -12,6 +15,13 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import uz.sqb.micro_service.model.*;
+import uz.sqb.micro_service.service.JournalService;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.HashMap;
+import java.util.List;
 
 
 @RestController
@@ -29,7 +39,7 @@ public class MainController {
     private static final String BY_BUYER_ID = "/by-buyer-id/{id}";
     private static final String UPDATE_BUYER_STATUS = "/update/{buyer_id}/{status_id}";
 
-
+    JournalService journalService;
 
     @GetMapping(BY_STATUS)
     public ResponseEntity getJournalByStatus(@PathVariable Long id){
@@ -53,9 +63,10 @@ public class MainController {
     @GetMapping(BY_DAY)
     @Description("Подключние на Bektexno и получить заказы по дню добавление")
     public ResponseEntity getJournalByDay(
-            @PathVariable Integer day){
-        ApiResponse response = restTemplate.getForObject("http://localhost:1818/main/report-by-date/" + day, ApiResponse.class);
-        return ResponseEntity.ok(response != null ? response.getObject() : "Error");
+            @PathVariable Integer day) throws IOException {
+        String object = restTemplate.getForObject("http://localhost:1818/main/report-by-date/" + day, String.class);
+        List<JournalByStatus> list = journalService.getExcelReportByDate(object);
+        return ResponseEntity.ok(list);
     }
 
     @GetMapping(UPDATE_BUYER_STATUS)
@@ -70,7 +81,7 @@ public class MainController {
 
     @GetMapping(BY_BUYER_ID)
     public ResponseEntity getJournalByBuyerId(
-            @PathVariable Long id){
+            @PathVariable Long id) throws NoSuchFieldException {
         String url = "http://localhost:1818/main/by-buyer-id/?buyer_id=" + id;
         ApiResponse response = restTemplate.getForObject(url, ApiResponse.class);
         return ResponseEntity.ok(response != null ? response.getObject() : "Empty Response");
