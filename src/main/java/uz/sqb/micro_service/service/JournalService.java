@@ -27,16 +27,17 @@ public class JournalService {
 
 
 
-    public List<JournalByStatus> getExcelReportByDate(String object) throws IOException {
+    public List<JournalByStatus> getExcelReportByDate(String object, Integer day) throws IOException {
         JournalByStatus[] array = new Gson().fromJson(object, JournalByStatus[].class);
         List<JournalByStatus> list = List.of(array);
+        SimpleDateFormat simpleDateFormat = new SimpleDateFormat("dd-MM-yyyy");
         Date date = new Date();
         String path = "C:/home/telegram_report_excel/";
         File file = new File(path);
         if (!file.exists()) {
             file.mkdir();
         }
-        File excel = new File(path + "journal_backup_" + (date.getMonth()) + ".xlsx");
+        File excel = new File(path + "telegram_report_day_" + day + "_date_" + simpleDateFormat.format(date) + ".xlsx");
         FileOutputStream fileOutputStream = new FileOutputStream(excel);
         XSSFWorkbook workbook = new XSSFWorkbook();
 
@@ -68,7 +69,7 @@ public class JournalService {
         }
         workbook.write(fileOutputStream);
         workbook.close();
-        log.info("|BEKTEXNO| Жунралы для телеграм были экспортированы в excel за прошлый месяц " + date.getMonth() + " | " + date);
+        log.info("|BEKTEXNO| Жунралы для телеграм были экспортированы в excel за период " + day + " дней" + " | " + date);
         return list;
     }
 }

@@ -65,7 +65,7 @@ public class MainController {
     public ResponseEntity getJournalByDay(
             @PathVariable Integer day) throws IOException {
         String object = restTemplate.getForObject("http://localhost:1818/main/report-by-date/" + day, String.class);
-        List<JournalByStatus> list = journalService.getExcelReportByDate(object);
+        List<JournalByStatus> list = journalService.getExcelReportByDate(object, day);
         return ResponseEntity.ok(list);
     }
 
@@ -81,7 +81,7 @@ public class MainController {
 
     @GetMapping(BY_BUYER_ID)
     public ResponseEntity getJournalByBuyerId(
-            @PathVariable Long id) throws NoSuchFieldException {
+            @PathVariable Long id) {
         String url = "http://localhost:1818/main/by-buyer-id/?buyer_id=" + id;
         ApiResponse response = restTemplate.getForObject(url, ApiResponse.class);
         return ResponseEntity.ok(response != null ? response.getObject() : "Empty Response");
